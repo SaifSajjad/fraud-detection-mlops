@@ -584,3 +584,36 @@ git push -u origin main
 
 To record the demo, follow docs/DEMO_CHECKLIST.md in order and capture each screen in
 docs/SCREENSHOT_CHECKLIST.md.
+
+## Demo Recovery — 2026-06-08
+
+- Docker engine: recovered via `docker desktop start`. Version: 29.5.2.
+- Project 3 profile `minikube`: Stopped — protected, not modified.
+- Project 4 profile `fraud-mlops-p4`: started successfully (`minikube start -p fraud-mlops-p4 --driver=docker --cpus=2 --memory=2400`).
+- Node fraud-mlops-p4: Ready.
+- Deployments: fraud-detection-api 3/3, prometheus 1/1, grafana 1/1. All Ready.
+- ReplicaSets: fraud-detection-api-854b878b68 (3/3), grafana-74d77c8694 (1/1), prometheus-54b47bd5f8 (1/1).
+- Pods: all 5 pods 1/1 Running (3 API + prometheus + grafana).
+- Services: fraud-detection-service (NodePort 8000:32696), prometheus-service (ClusterIP :9090), grafana-service (ClusterIP :3000).
+- API /ping: {"status":"ok"} — PASS.
+- API /health: {"status":"healthy","model_loaded":true} — PASS.
+- API /predict: {"prediction":1,"label":"Fraudulent","fraud_probability":1.0} — PASS.
+- API /metrics: fraud_api_requests_total visible — PASS.
+- Prometheus target fraud-detection-api health: up — PASS.
+- fraud_api_requests_total query: 36 — PASS.
+- Grafana /api/health: {"database":"ok","version":"13.0.2"} — PASS.
+- No Grafana recovery needed — pod was 1/1 Running on cluster start.
+- Fixes applied: none beyond Docker Desktop start.
+- Demo environment status: READY.
+
+## Phase 3 - Kubernetes API Verification
+
+- Context: fraud-mlops-p4
+- Namespace: fraud-mlops
+- Ready API pod count: 3
+- Access method: temporary scoped port-forward
+- Service URL: http://127.0.0.1:8080
+- Ping response: {"status":"ok"}
+- Health response: {"status":"healthy","model_loaded":true,"model_path":"/app/artifacts/fraud_model.joblib"}
+- Kubernetes prediction JSON: {"prediction":1,"label":"Fraudulent","fraud_probability":1.0}
+- Metrics endpoint contains fraud_api_requests_total: True
