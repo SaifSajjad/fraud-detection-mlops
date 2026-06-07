@@ -1,0 +1,9 @@
+{
+  "amount": 8054.26,
+  "old_balance_sender": 5315.46,
+  "new_balance_sender": 0.0,
+  "old_balance_receiver": 22417.22,
+  "new_balance_receiver": 27947.15,
+  "transaction_hour": 7,
+  "previous_failed_attempts": 3
+}

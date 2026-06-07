@@ -1,0 +1,54 @@
+PHASE 3 EVIDENCE - Terraform + Minikube + Kubernetes
+
+Terraform validate result:
+Success. The configuration is valid.
+
+Terraform apply result:
+Apply complete. Resources: 1 added, 0 changed, 1 destroyed.
+
+Project 3 profile state:
+minikube
+host: Stopped
+kubelet: Stopped
+apiserver: Stopped
+kubeconfig: Stopped
+
+Project 4 profile state:
+fraud-mlops-p4
+host: Running
+kubelet: Running
+apiserver: Running
+kubeconfig: Configured
+
+kubectl --context=fraud-mlops-p4 get nodes
+NAME             STATUS   ROLES           AGE    VERSION
+fraud-mlops-p4   Ready    control-plane   5m6s   v1.35.1
+
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get deployments
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+fraud-detection-api   3/3     3            3           84s
+
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get replicasets
+NAME                             DESIRED   CURRENT   READY   AGE
+fraud-detection-api-854b878b68   3         3         3       85s
+
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get pods -o wide
+NAME                                   READY   STATUS    RESTARTS   AGE   IP           NODE             NOMINATED NODE   READINESS GATES
+fraud-detection-api-854b878b68-ntfr5   1/1     Running   0          85s   10.244.0.4   fraud-mlops-p4   <none>           <none>
+fraud-detection-api-854b878b68-q9jt6   1/1     Running   0          85s   10.244.0.5   fraud-mlops-p4   <none>           <none>
+fraud-detection-api-854b878b68-sbhh7   1/1     Running   0          85s   10.244.0.3   fraud-mlops-p4   <none>           <none>
+
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get services
+NAME                      TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+fraud-detection-service   NodePort   10.107.230.145   <none>        8000:32696/TCP   84s
+
+API verification through Kubernetes Service:
+Context: fraud-mlops-p4
+Namespace: fraud-mlops
+Ready pod count: 3
+Access method: temporary scoped port-forward
+Service URL: http://127.0.0.1:8080
+Ping: {"status":"ok"}
+Health: {"status":"healthy","model_loaded":true,"model_path":"/app/artifacts/fraud_model.joblib"}
+Prediction: {"prediction":1,"label":"Fraudulent","fraud_probability":1.0}
+Metrics visible: True

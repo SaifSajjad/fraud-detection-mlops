@@ -1,0 +1,7 @@
+Write-Host "Run these in two separate PowerShell windows:"
+Write-Host "kubectl --context=fraud-mlops-p4 -n fraud-mlops port-forward service/prometheus-service 9090:9090"
+Write-Host "kubectl --context=fraud-mlops-p4 -n fraud-mlops port-forward service/grafana-service 3000:3000"
+Write-Host ""
+Write-Host "Prometheus: http://127.0.0.1:9090"
+Write-Host "Grafana:    http://127.0.0.1:3000"
+Write-Host "Grafana default login: admin / admin"

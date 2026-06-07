@@ -1,0 +1,9 @@
+[
+  "amount",
+  "old_balance_sender",
+  "new_balance_sender",
+  "old_balance_receiver",
+  "new_balance_receiver",
+  "transaction_hour",
+  "previous_failed_attempts"
+]

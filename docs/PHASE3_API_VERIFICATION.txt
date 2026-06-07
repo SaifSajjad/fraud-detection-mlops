@@ -1,0 +1,10 @@
+﻿PHASE 3 API VERIFICATION
+Context: fraud-mlops-p4
+Namespace: fraud-mlops
+Ready pod count: 3
+Access method: temporary scoped port-forward
+Service URL: http://127.0.0.1:8080
+Ping: {"status":"ok"}
+Health: {"status":"healthy","model_loaded":true,"model_path":"/app/artifacts/fraud_model.joblib"}
+Prediction: {"prediction":1,"label":"Fraudulent","fraud_probability":1.0}
+Metrics visible: True

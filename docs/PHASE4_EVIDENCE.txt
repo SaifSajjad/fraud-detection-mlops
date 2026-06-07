@@ -1,0 +1,225 @@
+PHASE 4 MONITORING EVIDENCE
+
+Status: BLOCKED after one bounded Grafana rollout retry.
+Context: fraud-mlops-p4
+Namespace: fraud-mlops
+
+## Scope Guardrails
+
+- Phase 4 only was attempted.
+- No Jenkins, GitHub, Terraform apply, Helm, persistent volumes, or Phase 5 commands were run.
+- Project 3 profile `minikube` was not started, stopped, deleted, reset, restarted, or modified.
+- All Kubernetes commands used `--context=fraud-mlops-p4`.
+
+## Existing API Precheck
+
+```text
+kubectl --context=fraud-mlops-p4 get nodes
+
+NAME             STATUS   ROLES           AGE   VERSION
+fraud-mlops-p4   Ready    control-plane   12m   v1.35.1
+```
+
+```text
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get deployments
+
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+fraud-detection-api   3/3     3            3           8m33s
+```
+
+```text
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get pods -o wide
+
+NAME                                   READY   STATUS    RESTARTS   AGE     IP           NODE             NOMINATED NODE   READINESS GATES
+fraud-detection-api-854b878b68-ntfr5   1/1     Running   0          8m33s   10.244.0.4   fraud-mlops-p4   <none>           <none>
+fraud-detection-api-854b878b68-q9jt6   1/1     Running   0          8m33s   10.244.0.5   fraud-mlops-p4   <none>           <none>
+fraud-detection-api-854b878b68-sbhh7   1/1     Running   0          8m33s   10.244.0.3   fraud-mlops-p4   <none>           <none>
+```
+
+```text
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get services
+
+NAME                      TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+fraud-detection-service   NodePort   10.107.230.145   <none>        8000:32696/TCP   8m32s
+```
+
+## Monitoring Deployment Output
+
+First bounded run:
+
+```text
+configmap/prometheus-config created
+deployment.apps/prometheus created
+service/prometheus-service created
+configmap/grafana-datasource created
+configmap/grafana-dashboard-provider created
+configmap/grafana-dashboard created
+deployment.apps/grafana created
+service/grafana-service created
+deployment "prometheus" successfully rolled out
+grafana rollout status timed out after 180s while waiting for 1 updated replica to become available
+```
+
+Diagnostic result after first failure:
+
+```text
+NAME                                   READY   STATUS              RESTARTS   AGE
+fraud-detection-api-854b878b68-ntfr5   1/1     Running             0          19m
+fraud-detection-api-854b878b68-q9jt6   1/1     Running             0          19m
+fraud-detection-api-854b878b68-sbhh7   1/1     Running             0          19m
+grafana-74d77c8694-9cpwz               0/1     ContainerCreating   0          6m5s
+prometheus-54b47bd5f8-wvzvz            1/1     Running             0          6m7s
+```
+
+Grafana diagnostic details:
+
+```text
+Image: grafana/grafana:latest
+State: Waiting
+Reason: ContainerCreating
+Event: Pulling image "grafana/grafana:latest"
+Grafana logs were unavailable because the container had not started.
+```
+
+Single bounded retry:
+
+```text
+deployment.apps/prometheus unchanged
+deployment.apps/grafana unchanged
+deployment "prometheus" successfully rolled out
+deployment "grafana" exceeded its progress deadline
+```
+
+## Final Pod List
+
+```text
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get pods -o wide
+
+NAME                                   READY   STATUS              RESTARTS   AGE   IP           NODE             NOMINATED NODE   READINESS GATES
+fraud-detection-api-854b878b68-ntfr5   1/1     Running             0          23m   10.244.0.4   fraud-mlops-p4   <none>           <none>
+fraud-detection-api-854b878b68-q9jt6   1/1     Running             0          23m   10.244.0.5   fraud-mlops-p4   <none>           <none>
+fraud-detection-api-854b878b68-sbhh7   1/1     Running             0          23m   10.244.0.3   fraud-mlops-p4   <none>           <none>
+grafana-74d77c8694-9cpwz               0/1     ContainerCreating   0          10m   <none>       fraud-mlops-p4   <none>           <none>
+prometheus-54b47bd5f8-wvzvz            1/1     Running             0          10m   10.244.0.7   fraud-mlops-p4   <none>           <none>
+```
+
+## Final Service List
+
+```text
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get services
+
+NAME                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+fraud-detection-service   NodePort    10.107.230.145   <none>        8000:32696/TCP   23m
+grafana-service           ClusterIP   10.106.187.205   <none>        3000/TCP         10m
+prometheus-service        ClusterIP   10.104.52.140    <none>        9090/TCP         10m
+```
+
+## Verification Status
+
+- Prometheus Deployment Ready: true.
+- Prometheus Service exists: true.
+- Grafana Service exists: true.
+- Grafana Deployment Ready: false, `0/1`, pod remained `ContainerCreating`.
+- Prometheus readiness endpoint: not verified because the script stopped before temporary port-forward validation after the Grafana rollout blocker.
+- Grafana health endpoint: not verified because Grafana did not become Ready.
+- Prometheus target health: not verified because the validation phase did not start after the Grafana rollout blocker.
+- Metric query result: not verified because the validation phase did not start after the Grafana rollout blocker.
+- Grafana datasource manifest exists: true.
+- Grafana dashboard manifest exists: true.
+- Grafana datasource API status: not verified because Grafana did not become Ready.
+- Grafana dashboard provisioning status: not verified because Grafana did not become Ready.
+
+## Blocker
+
+Grafana did not become available within the required bounded rollout windows. The pod remained in `ContainerCreating` while using `grafana/grafana:latest`, and the deployment exceeded its progress deadline after the single allowed retry.
+
+---
+
+## Phase 4 Recovery — 2026-06-08
+
+### Root Cause
+
+The previous session's `grafana/grafana:latest` image pull was still in progress when the session timed out.
+The image completed pulling during the subsequent cluster shutdown, so on restart the image was locally
+cached inside the minikube node. Grafana started successfully on its own after `minikube start -p fraud-mlops-p4`.
+No manifest change was required.
+
+### Recovery Steps
+
+```text
+1. docker info                              → Docker engine healthy (v29.5.2)
+2. minikube start -p fraud-mlops-p4 --driver=docker --cpus=2 --memory=2400 --keep-context
+   → cluster started, context fraud-mlops-p4
+3. kubectl --context=fraud-mlops-p4 -n fraud-mlops get pods -l app=grafana -o wide
+   NAME                       READY   STATUS    RESTARTS      AGE   IP           NODE
+   grafana-74d77c8694-9cpwz   1/1     Running   1 (14m ago)   26h   10.244.0.8   fraud-mlops-p4
+   → Grafana 1/1 Running immediately on restart (image was already cached)
+```
+
+### Verification Check 1 — Grafana pod 1/1 Running
+
+```text
+grafana-74d77c8694-9cpwz   1/1   Running   1 (14m ago)   26h   10.244.0.8
+PASS
+```
+
+### Verification Check 2 — Grafana /api/health
+
+```text
+kubectl --context=fraud-mlops-p4 -n fraud-mlops port-forward svc/grafana-service 3000:3000
+curl http://localhost:3000/api/health
+→ {"database":"ok","version":"13.0.2","commit":"3fcdbc5a"}
+PASS
+```
+
+### Verification Check 3 — Prometheus still Ready
+
+```text
+prometheus-54b47bd5f8-wvzvz   1/1   Running   2 (14m ago)   26h   10.244.0.12
+PASS (read-only, no changes made)
+```
+
+### Verification Check 4 — Prometheus target health = up
+
+```text
+curl http://localhost:9090/api/v1/targets
+→ job=fraud-detection-api | health=up | scrapeUrl=http://fraud-detection-service:8000/metrics
+PASS
+```
+
+### Verification Check 5 — Metric fraud_api_requests_total non-empty
+
+```text
+curl "http://localhost:9090/api/v1/query?query=fraud_api_requests_total"
+→ value: 280
+PASS
+```
+
+### Final Pod / Deployment / Service State
+
+```text
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get pods -o wide
+
+NAME                                   READY   STATUS    RESTARTS      AGE   IP            NODE
+fraud-detection-api-854b878b68-ntfr5   1/1     Running   2 (14m ago)   26h   10.244.0.10   fraud-mlops-p4
+fraud-detection-api-854b878b68-q9jt6   1/1     Running   2 (14m ago)   26h   10.244.0.9    fraud-mlops-p4
+fraud-detection-api-854b878b68-sbhh7   1/1     Running   2 (14m ago)   26h   10.244.0.13   fraud-mlops-p4
+grafana-74d77c8694-9cpwz               1/1     Running   1 (14m ago)   26h   10.244.0.8    fraud-mlops-p4
+prometheus-54b47bd5f8-wvzvz            1/1     Running   2 (14m ago)   26h   10.244.0.12   fraud-mlops-p4
+
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get deployments
+
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+fraud-detection-api   3/3     3            3           26h
+grafana               1/1     1            1           26h
+prometheus            1/1     1            1           26h
+
+kubectl --context=fraud-mlops-p4 -n fraud-mlops get services
+
+NAME                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+fraud-detection-service   NodePort    10.107.230.145   <none>        8000:32696/TCP   26h
+grafana-service           ClusterIP   10.106.187.205   <none>        3000/TCP         26h
+prometheus-service        ClusterIP   10.104.52.140    <none>        9090/TCP         26h
+```
+
+### Phase 4 Status: COMPLETE

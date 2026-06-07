@@ -1,0 +1,32 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Model artifacts (large binaries — do not commit)
+*.joblib
+*.pkl
+artifacts/confusion_matrix.json
+artifacts/confusion_matrix.txt
+
+# MLflow
+mlruns/
+mlflow.db
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfplan
+*.tfstate*
+
+# Secrets and local config
+.env
+
+# Logs
+*.log
+
