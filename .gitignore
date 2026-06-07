@@ -30,3 +30,9 @@ terraform.tfstate.backup
 # Logs
 *.log
 
+
+.claude/
+artifacts/*.pid
+artifacts/*stdout.txt
+artifacts/*stderr.txt
+artifacts/phase3-*.txt
